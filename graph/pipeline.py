@@ -39,7 +39,7 @@ from config import (
 )
 
 memory = HotelMemory()
-llm = ChatGroq(model=GROQ_MODEL_MAIN, temperature=0.2, api_key=GROQ_API_KEY)
+llm = ChatGroq(model=GROQ_MODEL_MAIN, temperature=0.1, api_key=GROQ_API_KEY)
 llm_fast = ChatGroq(model=GROQ_MODEL_FAST, temperature=0.1, api_key=GROQ_API_KEY)
 
 
