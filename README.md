@@ -9,7 +9,7 @@
 | | v2.0 | v3.0 |
 |---|---|---|
 | Orchestration | CrewAI (`Agent`/`Task`/`Crew`, autonomous tool loops) | LangGraph (explicit fan-out/fan-in state graph) |
-| LLM | Google Gemini 2.0 Flash | Open-weight models (Llama 3.3 70B) via Groq's free API |
+| LLM | Google Gemini 2.5 Flash | Open-weight models (Llama 3.3 70B) via Groq's free API |
 | Memory | ChromaDB (vector search) | SQLite (plain recency queries) |
 | Anomaly detection | Implicit, left to the LLM's judgment | Deterministic rule engine against `config.py` thresholds |
 
