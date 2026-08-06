@@ -1,15 +1,16 @@
 # 🏨 Hotel GM Intelligence Agent 3.0
 
-> **Multi-agent AI system for hotel General Managers** — Revenue, Operations, Reputation & Payroll intelligence in one dashboard.
+> **Multi-agent AI system for hotel General Managers** — Revenue, Operations, Reputation & Payroll intelligence in one dashboard with Real-Time WebRTC Voice Copilot.
 
-**"Agents reason; Services retrieve; Metrics compute."** — same philosophy as v1.0/v2.0. What changed in 3.0 is the orchestration engine and the model.
+**"Agents reason; Services retrieve; Metrics compute."** — same philosophy as v1.0/v2.0. What changed in 3.0 is the orchestration engine, the model, and real-time voice interactions.
 
 ## What changed from v2.0
 
 | | v2.0 | v3.0 |
 |---|---|---|
 | Orchestration | CrewAI (`Agent`/`Task`/`Crew`, autonomous tool loops) | LangGraph (explicit fan-out/fan-in state graph) |
-| LLM | Google Gemini 2.5 Flash | Open-weight models (Llama 3.3 70B) via Groq's free API |
+| LLM | Google Gemini 2.0 / 2.5 Flash | Open-weight models (Llama 3.3 70B / 3.1 8B) via Groq |
+| Voice Copilot | N/A | Real-Time LiveKit WebRTC Voice Agent (Silero VAD + ElevenLabs + Groq LPU) |
 | Memory | ChromaDB (vector search) | SQLite (plain recency queries) |
 | Anomaly detection | Implicit, left to the LLM's judgment | Deterministic rule engine against `config.py` thresholds |
 
@@ -18,28 +19,33 @@ The CrewAI agents never actually delegated or chose between tools — each one a
 ## 🏗️ Architecture
 
 ```
-┌─────────────────────────────────────────────────┐
-│              GM Dashboard (Streamlit)            │
-│  [Daily Brief] [Chat] [Live Data] [Memory]      │
-└──────────────────┬──────────────────────────────┘
-                   │
-         ┌─────────▼──────────┐
-         │  LangGraph pipeline │  fan-out → domain nodes → fan-in → synthesis
-         └──┬──┬──┬──┬────────┘
-            │  │  │  │
-    ┌───────┘  │  │  └──────────┐
-    ▼          ▼  ▼             ▼
-┌───────┐ ┌──────┐ ┌────────┐ ┌──────────┐
-│Revenue│ │Ops   │ │Repute  │ │Payroll   │
-│node   │ │node  │ │node    │ │node      │
-└───┬───┘ └──┬───┘ └───┬────┘ └────┬─────┘
-    │        │          │           │
-    ▼        ▼          ▼           ▼
-  PMS/RMS  Arrivals   Reviews    Payroll
-  tools    tools      tools      tools
+┌─────────────────────────────────────────────────┐      ┌─────────────────────────────┐
+│              GM Dashboard (Streamlit)            │      │  🎙️ WebRTC Voice Copilot   │
+│  [Daily Brief] [Chat] [Live Data] [Memory]      │      │     (LiveKit + Voice Agent) │
+└──────────────────┬──────────────────────────────┘      └──────────────┬──────────────┘
+                   │                                                    │
+                   └──────────────────┐           ┌─────────────────────┘
+                                      ▼           ▼
+                            ┌──────────────────┐
+                            │  LangGraph pipeline │  fan-out → domain nodes → fan-in → synthesis
+                            └──┬──┬──┬──┬────────┘
+                               │  │  │  │
+                       ┌───────┘  │  │  └──────────┐
+                       ▼          ▼  ▼             ▼
+                   ┌───────┐ ┌──────┐ ┌────────┐ ┌──────────┐
+                   │Revenue│ │Ops   │ │Repute  │ │Payroll   │
+                   │node   │ │node  │ │node    │ │node      │
+                   └───┬───┘ └──┬───┘ └───┬────┘ └────┬─────┘
+                       │        │          │           │
+                       ▼        ▼          ▼           ▼
+                     PMS/RMS  Arrivals   Reviews    Payroll
+                     tools    tools      tools      tools
 ```
 
 Each domain node: one deterministic Python fetch (`tools/*.py`, logic unchanged from v2.0) → one LLM call that turns the JSON into narrative analysis. No tool-selection reasoning, no `max_iter`, no `allow_delegation` — that uncertainty is resolved in code, not left to the model.
+
+### Real-Time Voice Copilot (LiveKit WebRTC)
+v3.0 adds a low-latency WebRTC Voice Agent (`voice_agent.py`) using Silero VAD, ElevenLabs TTS, and Groq's high-speed LPU infrastructure. The agent directly triggers the LangGraph `query_hotel_systems` function tool when the General Manager speaks data queries.
 
 ### Why no ChromaDB in 3.0?
 
@@ -62,10 +68,11 @@ Streamlit Community Cloud's free tier is capped at 1GB RAM. `transformers`/`torc
 
 ```
 hotel-gm-system-3.0/
-├── app.py                      # Streamlit UI (4 pages) — unchanged from v2.0
-├── config.py                   # Centralized configuration (Groq + SQLite)
-├── requirements.txt
-├── .env.example                # Copy to .env and fill in GROQ_API_KEY
+├── app.py                      # Streamlit UI (Dashboard + Secure Voice Portal Launcher)
+├── voice_agent.py              # Real-time LiveKit WebRTC Voice Copilot worker
+├── config.py                   # Centralized configuration (Groq + SQLite + LiveKit)
+├── requirements.txt            # Python dependencies (LangGraph, LiveKit, Streamlit, etc.)
+├── .env.example                # Copy to .env and fill in credentials
 ├── Dockerfile
 ├── .streamlit/
 │   └── config.toml             # Dark theme
@@ -94,8 +101,12 @@ venv\Scripts\activate          # Windows
 pip install -r requirements.txt
 
 cp .env.example .env
-# Edit .env: add your GROQ_API_KEY (free, no card, at console.groq.com)
+# Edit .env: add your GROQ_API_KEY and LiveKit keys (from cloud.livekit.io)
 
+# 1. Run the Voice Agent (Worker)
+python voice_agent.py start
+
+# 2. Run the Streamlit Dashboard (In a separate terminal)
 streamlit run app.py
 ```
 
@@ -106,6 +117,9 @@ streamlit run app.py
 3. Add secrets in the dashboard:
    ```toml
    GROQ_API_KEY = "your-key-here"
+   LIVEKIT_URL = "wss://your-project.livekit.cloud"
+   LIVEKIT_API_KEY = "your-key"
+   LIVEKIT_API_SECRET = "your-secret"
    ```
 
 ## 🎯 Demo Queries
@@ -120,6 +134,7 @@ streamlit run app.py
 
 - **Orchestration:** LangGraph (fan-out/fan-in state graph)
 - **LLM:** Open-weight models via Groq's free API (Llama 3.3 70B / Llama 3.1 8B)
+- **Voice Engine:** LiveKit WebRTC + Silero VAD + ElevenLabs TTS
 - **Memory:** SQLite (persistent, recency-based)
 - **UI:** Streamlit + Plotly
 - **Data:** Faker + NumPy (synthetic mock generators)
@@ -127,3 +142,4 @@ streamlit run app.py
 ## 👤 Built By
 
 **Seshank Chinnapotula**
+

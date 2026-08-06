@@ -3,8 +3,15 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 from datetime import datetime
-
+import os
+import uuid
+from livekit import api
+import streamlit.components.v1 as components
 from graph.pipeline import run_full_briefing, run_gm_chat
+from dotenv import load_dotenv
+
+load_dotenv()
+
 from data.mock_hotel_data import (
     get_occupancy_forecast,
     get_comp_set_rates,
@@ -24,6 +31,33 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+# ─── LiveKit WebRTC Token Generation ─────────────────────────────────────────
+if "room_name" not in st.session_state:
+    st.session_state.room_name = f"gm-room-{uuid.uuid4().hex[:8]}"
+
+livekit_url = os.environ.get("LIVEKIT_URL", "")
+livekit_key = os.environ.get("LIVEKIT_API_KEY", "")
+livekit_secret = os.environ.get("LIVEKIT_API_SECRET", "")
+
+if livekit_key and livekit_secret:
+    token = api.AccessToken(livekit_key, livekit_secret) \
+        .with_identity("hotel-gm") \
+        .with_name("General Manager") \
+        .with_grants(api.VideoGrants(room_join=True, room=st.session_state.room_name)) \
+        .to_jwt()
+
+    livekit_html = f"""
+    <script type="module" src="https://cdn.jsdelivr.net/npm/@livekit/agent-embed@latest/dist/widget.js"></script>
+    <livekit-agent-embed
+      url="{livekit_url}"
+      token="{token}"
+      theme="dark"
+      style="height: 100%; width: 100%;">
+    </livekit-agent-embed>
+    """
+else:
+    livekit_html = None
 
 # ─── Custom CSS ─────────────────────────────────────────────────────────────
 st.markdown("""
@@ -128,13 +162,16 @@ memory = HotelMemory()
 # ─── Sidebar ────────────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown(f'<div class="sidebar-title">🏨 {HOTEL_NAME}</div>', unsafe_allow_html=True)
-    st.caption("GM Intelligence Dashboard v2.0")
+    st.caption("GM Intelligence Dashboard v3.0")
     st.divider()
 
+    # Date and Time
     st.markdown(f"**📅 Today:** {datetime.today().strftime('%A, %d %B %Y')}")
     st.markdown(f"**🕐 Time:** {datetime.now().strftime('%H:%M')} hrs")
     st.divider()
 
+    # Navigation Menu (Placed prominently at the top)
+    st.markdown("**📌 Navigation**")
     page = st.radio(
         "Navigate",
         ["🌅 Morning Briefing", "💬 Ask the Agent", "📊 Live Data", "🧠 Memory Log"],
@@ -149,10 +186,37 @@ with st.sidebar:
     st.caption(f"Briefings: {stats['total_briefings']} | Anomalies: {stats['total_anomalies']} | Chats: {stats['total_chat_messages']}")
 
     st.divider()
+
+    # Voice Copilot Embed (Placed at the bottom for smooth expansion)
+    # ─── VOICE AGENT SECURE PORTAL ───────────────────────────────────────────────
+    st.divider()
+    st.markdown('<div class="sidebar-title">🎙️ Voice Copilot</div>', unsafe_allow_html=True)
+    st.caption("Real-Time WebRTC Interface")
+    
+    if livekit_html: # We still use this to check if the token generated successfully
+        st.success("✅ Voice Server Online")
+        st.markdown(
+            "<span style='font-size: 0.85rem; color: #a0aec0;'>"
+            "For executive privacy and to bypass browser iframe sandboxing, microphone access is routed through the secure portal."
+            "</span>", 
+            unsafe_allow_html=True
+        )
+        
+        # Display the credentials so the GM can copy them
+        with st.expander("🔑 View Connection Credentials"):
+            st.text("Copy these to connect:")
+            st.code(f"URL: {livekit_url}", language="text")
+            st.code(f"Token: {token}", language="text")
+            
+        # Button to open the Playground in a new tab
+        st.link_button("Launch Secure Voice Portal ↗", "https://agents-playground.livekit.io/", use_container_width=True)
+    else:
+        st.warning("⚠️ LiveKit keys missing in .env. Voice Agent disabled.")
+
+    st.divider()
     st.caption("Powered by LangGraph + Llama 3.3 (Groq)")
     st.caption("Built by Seshank Chinnapotula")
     st.caption("*Agents reason; Services retrieve; Metrics compute.*")
-
 
 # ═══════════════════════════════════════════════════════════════
 # PAGE 1 — MORNING BRIEFING
