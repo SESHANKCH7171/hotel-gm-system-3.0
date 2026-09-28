@@ -19,8 +19,8 @@ if not GROQ_API_KEY:
 # ─── LLM Config (open-weight models served over Groq's free API) ───────────
 # GROQ_MODEL_MAIN handles domain analysis + synthesis (quality matters most).
 # GROQ_MODEL_FAST handles the chat-mode router (cheap 1-shot classification).
-GROQ_MODEL_MAIN = os.getenv("GROQ_MODEL_MAIN", "llama-3.3-70b-versatile")
-GROQ_MODEL_FAST = os.getenv("GROQ_MODEL_FAST", "llama-3.1-8b-instant")
+GROQ_MODEL_MAIN = os.getenv("GROQ_MODEL_MAIN", "openai/gpt-oss-20b")
+GROQ_MODEL_FAST = os.getenv("GROQ_MODEL_FAST", "openai/gpt-oss-20b")
 
 # ─── Anomaly Detection Thresholds ────────────────────────────────────────────
 # These now drive a deterministic rule engine (graph/pipeline.py) instead of

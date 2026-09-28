@@ -4,7 +4,7 @@ import logging
 from dotenv import load_dotenv
 
 from livekit.agents import Agent, AgentSession, JobContext, WorkerOptions, cli, llm
-from livekit.plugins import openai, elevenlabs, silero
+from livekit.plugins import openai, elevenlabs, silero, deepgram
 
 # Import your existing LangGraph logic
 from graph.pipeline import run_gm_chat
@@ -17,12 +17,25 @@ class HotelCopilotAgent(Agent):
     def __init__(self) -> None:
         # Initialize the specific components from the DeepLearning.AI course
         vad = silero.VAD.load()
-        stt = openai.STT(model="whisper-1")
-        tts = elevenlabs.TTS()
+        
+        # Hijack OpenAI STT to use Groq's free ultra-fast Whisper Large V3
+        stt = openai.STT(
+            model="whisper-large-v3",
+            base_url="https://api.groq.com/openai/v1",
+            api_key=os.environ.get("GROQ_API_KEY")
+        )
+        
+        # Use Deepgram Aura TTS (Sub-100ms TTFB) if available, otherwise ElevenLabs
+        deepgram_key = os.environ.get("DEEPGRAM_API_KEY")
+        if deepgram_key:
+            tts = deepgram.TTS(model="aura-2-andromeda-en", api_key=deepgram_key)
+        else:
+            eleven_key = os.environ.get("ELEVEN_API_KEY") or os.environ.get("ELEVENLABS_API_KEY")
+            tts = elevenlabs.TTS(api_key=eleven_key) if eleven_key else elevenlabs.TTS()
         
         # Hijack OpenAI plugin to use Groq's LPU infrastructure for ultra-low latency
         groq_llm = openai.LLM(
-            model="llama-3.1-8b-instant",
+            model="openai/gpt-oss-20b",
             base_url="https://api.groq.com/openai/v1",
             api_key=os.environ.get("GROQ_API_KEY")
         )
@@ -70,4 +83,4 @@ async def entrypoint(ctx: JobContext):
 
 
 if __name__ == "__main__":
-    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint))
+    cli.run_app(WorkerOptions(entrypoint_fnc=entrypoint, agent_name="hotel-copilot"))

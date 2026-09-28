@@ -214,7 +214,7 @@ with st.sidebar:
         st.warning("⚠️ LiveKit keys missing in .env. Voice Agent disabled.")
 
     st.divider()
-    st.caption("Powered by LangGraph + Llama 3.3 (Groq)")
+    st.caption("Powered by LangGraph + OpenAI/gpt-oss-20b (Groq)")
     st.caption("Built by Seshank Chinnapotula")
     st.caption("*Agents reason; Services retrieve; Metrics compute.*")
 
