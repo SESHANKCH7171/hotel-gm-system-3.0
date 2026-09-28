@@ -13,6 +13,14 @@
 
 ---
 
+## 📺 Live WebRTC Voice Agent Demonstration
+
+[![Hotel GM Copilot Voice Demo](https://img.youtube.com/vi/lGpPy6ma4SQ/maxresdefault.jpg)](https://youtu.be/lGpPy6ma4SQ)
+
+> 🔴 **[Watch 1-Minute Live Demo on YouTube](https://youtu.be/lGpPy6ma4SQ)**: Real-time WebRTC audio query to the LiveKit voice copilot, executing deterministic LangGraph anomaly engines across rate parity, occupancy pace, and payroll variance.
+
+---
+
 ## ⚡ Production Voice Benchmarks & Telemetry (Live Verified)
 
 The system was benchmarked in live WebRTC sessions connecting browser audio over LiveKit Cloud to Groq LPUs and Deepgram Aura-2:
